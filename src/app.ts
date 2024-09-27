@@ -1,5 +1,5 @@
-// import { serveFile } from "https://deno.land/std@0.204.0/http/file_server.ts";
-//
+import { serveFile } from "https://deno.land/std@0.204.0/http/file_server.ts";
+
 // // Slightly complicated so we can mock createHandler() in unit tests
 //
 // export type ServeFileWrapper = (path: string, req: Request) => Promise<Response>;
@@ -31,8 +31,20 @@
 //     Deno.serve({ port: 8000 }, handler);
 // }
 
-function handler(_req: Request): Response {
-    return new Response("Hello World from Deno");
+async function handler(req: Request): Promise<Response> {
+    const url = new URL(req.url);
+    let filepath = decodeURIComponent(url.pathname);
+
+    // If filepath is empty or /, serve index.html
+    if (filepath === "" || filepath === "/") {
+        filepath = "/index.html";
+    }
+
+    try {
+        return await serveFile(req, `../public${filepath}`);
+    } catch {
+        return new Response("404 Not Found", { status: 404 });
+    }
 }
 
 Deno.serve({ port: 8000 }, handler);
