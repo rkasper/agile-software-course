@@ -18,4 +18,4 @@ CMD ["run", "--allow-net", "--allow-read", "src/app.ts"]
 EXPOSE 8000
 
 # Add a label for the test command
-#LABEL com.digitalocean.test-cmd='["deno", "test"]'
+LABEL com.digitalocean.test-cmd='["deno", "test", "--allow-read"]'
