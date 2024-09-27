@@ -32,6 +32,7 @@ import { serveFile } from "https://deno.land/std@0.204.0/http/file_server.ts";
 // }
 
 async function handler(req: Request): Promise<Response> {
+    console.log('handler: req.url == ', req.url);
     const url = new URL(req.url);
     let filepath = decodeURIComponent(url.pathname);
 
@@ -41,6 +42,7 @@ async function handler(req: Request): Promise<Response> {
     }
 
     try {
+        console.log('handler: serving ', `../public${filepath}`);
         return await serveFile(req, `../public${filepath}`);
     } catch {
         return new Response("404 Not Found", { status: 404 });
