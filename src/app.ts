@@ -1,8 +1,18 @@
-import {serveFile} from "https://deno.land/std@0.204.0/http/file_server.ts";
-import {dirname, fromFileUrl, join} from "https://deno.land/std@0.204.0/path/mod.ts";
+import { serveFile } from "https://deno.land/std@0.204.0/http/file_server.ts";
+import { dirname, fromFileUrl, join } from "https://deno.land/std@0.204.0/path/mod.ts";
+import * as log from "https://deno.land/std@0.204.0/log/mod.ts";
 
-// This is slightly complicated so we can mock createHandler() in unit tests.
-// Was it worth the extra complexity? I'm still not sure.
+log.setup({
+  handlers: {
+    console: new log.handlers.ConsoleHandler("DEBUG"),
+  },
+  loggers: {
+    default: {
+      level: "DEBUG",
+      handlers: ["console"],
+    },
+  },
+});
 
 function findPublicDir(): string {
     const possibleDirs = [
@@ -15,26 +25,28 @@ function findPublicDir(): string {
         try {
             const dirInfo = Deno.statSync(dir);
             if (dirInfo.isDirectory) {
-                console.log("Found public directory at:", dir);
+                log.info(`Found public directory at: ${dir}`);
                 return dir;
             }
         } catch {
-            // Directory doesn't exist or is not accessible, continue to next
+            log.debug(`Directory not found or not accessible: ${dir}`);
         }
     }
 
+    log.error("Could not find public directory");
     throw new Error("Could not find public directory");
 }
 
 const publicDir = findPublicDir();
-console.log("Public directory:", publicDir);
+log.info(`Using public directory: ${publicDir}`);
 
 export type ServeFileWrapper = (path: string, req: Request) => Promise<Response>;
 
 export const defaultServeFileWrapper: ServeFileWrapper = async (path: string, req: Request): Promise<Response> => {
     try {
         return await serveFile(req, path);
-    } catch {
+    } catch (error) {
+        log.error(`Error serving file ${path}: ${error.message}`);
         return new Response("404 Not Found", { status: 404 });
     }
 };
@@ -44,25 +56,32 @@ export function createHandler(
     injectedPublicDir?: string
 ) {
     const publicDir = injectedPublicDir || findPublicDir();
-    console.log("Using public directory: ", publicDir);
+    log.info(`Handler created with public directory: ${publicDir}`);
 
     return async function handler(req: Request): Promise<Response> {
         const url = new URL(req.url);
         let filepath = decodeURIComponent(url.pathname);
 
+        log.debug(`Handling request for: ${filepath}`);
+
         if (filepath === "" || filepath === "/") {
             filepath = "/index.html";
-            console.log('handler: serving index.html');
+            log.debug('Serving index.html for root path');
         }
 
         if (filepath === "/do-test") {
+            log.debug('Serving test response');
             return new Response("This filepath is totally working, my friend!");
         }
 
         try {
-            return await serveFileWrapperFn(join(publicDir, filepath), req);
+            const fullPath = join(publicDir, filepath);
+            log.debug(`Attempting to serve file: ${fullPath}`);
+            const response = await serveFileWrapperFn(fullPath, req);
+            log.info(`Served ${filepath} with status ${response.status}`);
+            return response;
         } catch (error) {
-            console.error('Error serving file:', error);
+            log.error(`Error serving file ${filepath}: ${error.message}`);
             return new Response("404 Not Found", { status: 404 });
         }
     }
