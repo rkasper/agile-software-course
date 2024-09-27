@@ -41,6 +41,11 @@ async function handler(req: Request): Promise<Response> {
         filepath = "/index.html";
     }
 
+    // For testing on DO App Platform
+    if (filepath === "/do-test") {
+        return new Response("This filepath is totally working, my friend!");
+    }
+
     try {
         console.log('handler: serving ', `../public${filepath}`);
         return await serveFile(req, `../public${filepath}`);
