@@ -1,94 +1,74 @@
 import { assert, assertEquals, assertExists } from "https://deno.land/std@0.204.0/testing/asserts.ts";
-import { assertSpyCall, spy } from "https://deno.land/std@0.204.0/testing/mock.ts";
+import { assertSpyCall, Spy, spy } from "https://deno.land/std@0.204.0/testing/mock.ts";
 import { join } from "https://deno.land/std@0.204.0/path/mod.ts";
 import { createHandler, ServeFileWrapper } from "../src/app.ts";
 
-// Mock Deno.cwd() to return a predictable path
-const originalCwd = Deno.cwd;
-Deno.cwd = () => "/mock/app";
+const MOCK_PUBLIC_DIR = "/mock/app/public";
+
+function createMockServeFileWrapper(responseBody: string, status = 200, headers = {}): ServeFileWrapper {
+    return async (path: string, req: Request): Promise<Response> => {
+        console.log("mockServeFileWrapper called with path:", path);
+        return new Response(responseBody, { status, headers });
+    };
+}
+
+function createHandlerWithSpy(mockServeFileWrapper: ServeFileWrapper) {
+    const spyServeFileWrapper = spy(mockServeFileWrapper) as Spy<ServeFileWrapper>;
+    const handler = createHandler(spyServeFileWrapper, MOCK_PUBLIC_DIR);
+    return { handler, spyServeFileWrapper };
+}
+
+function assertSpyCallWithPath(
+    spyServeFileWrapper: Spy<ServeFileWrapper>,
+    expectedPath: string,
+    req: Request
+) {
+    assertSpyCall(spyServeFileWrapper, 0, {
+        args: [join(MOCK_PUBLIC_DIR, expectedPath), req],
+    });
+    assert(spyServeFileWrapper.calls.length > 0, "Expected spyServeFileWrapper to be called");
+    const returnedResponse = spyServeFileWrapper.calls[0].returned;
+    assertExists(returnedResponse, "Returned response should not be undefined");
+}
 
 Deno.test("Unit test system works properly", () => {
-    const result = 2 + 2;
-    assertEquals(result, 4);
+    assertEquals(2 + 2, 4);
 });
 
 Deno.test("handler serves index.html for root path", async () => {
-    const mockPublicDir = "/mock/app/public";
-
-    const mockServeFileWrapper: ServeFileWrapper = async (path: string, req: Request): Promise<Response> => {
-        console.log("mockServeFileWrapper called with path:", path);
-        return new Response("Index Page", { status: 200 });
-    };
-
-    const spyServeFileWrapper = spy(mockServeFileWrapper);
-
-    const handler = createHandler(spyServeFileWrapper, mockPublicDir);
+    const mockServeFileWrapper = createMockServeFileWrapper("Index Page");
+    const { handler, spyServeFileWrapper } = createHandlerWithSpy(mockServeFileWrapper);
 
     const req = new Request("http://localhost:8000/");
     const response = await handler(req);
 
     assertEquals(response.status, 200, "Expected 200 status code");
-
-    assertSpyCall(spyServeFileWrapper, 0, {
-        args: [join(mockPublicDir, "index.html"), req],
-    });
-
-    assert(spyServeFileWrapper.calls.length > 0, "Expected spyServeFileWrapper to be called");
-    const returnedResponse = await spyServeFileWrapper.calls[0].returned;
-    assert(returnedResponse !== undefined, "Returned response should not be undefined");
+    assertEquals(await response.text(), "Index Page");
+    assertSpyCallWithPath(spyServeFileWrapper, "index.html", req);
 });
 
 Deno.test("handler serves arbitrary file", async () => {
-    const mockPublicDir = "/mock/app/public";
-
-    const mockServeFileWrapper: ServeFileWrapper = async (path: string, req: Request): Promise<Response> => {
-        console.log("mockServeFileWrapper called with path:", path);
-        return new Response("body { font-family: Arial, sans-serif; }", {
-            status: 200,
-            headers: { "Content-Type": "text/css" }
-        });
-    };
-
-    const spyServeFileWrapper = spy(mockServeFileWrapper);
-
-    const handler = createHandler(spyServeFileWrapper, mockPublicDir);
+    const cssContent = "body { font-family: Arial, sans-serif; }";
+    const mockServeFileWrapper = createMockServeFileWrapper(cssContent, 200, { "Content-Type": "text/css" });
+    const { handler, spyServeFileWrapper } = createHandlerWithSpy(mockServeFileWrapper);
 
     const req = new Request("http://localhost:8000/styles/main.css");
     const response = await handler(req);
 
     assertEquals(response.status, 200);
     assertEquals(response.headers.get("Content-Type"), "text/css");
-    assertEquals(await response.text(), "body { font-family: Arial, sans-serif; }");
-
-    assertSpyCall(spyServeFileWrapper, 0, {
-        args: [join(mockPublicDir, "styles/main.css"), req],
-    });
-    const returnedResponse = await spyServeFileWrapper.calls[0].returned;
-    assertExists(returnedResponse, "Returned response should not be undefined");
+    assertEquals(await response.text(), cssContent);
+    assertSpyCallWithPath(spyServeFileWrapper, "styles/main.css", req);
 });
 
 Deno.test("handler returns 404 for non-existent file", async () => {
-    const mockPublicDir = "/mock/app/public";
-
-    const mockServeFileWrapper: ServeFileWrapper = async (path: string, req: Request): Promise<Response> => {
-        console.log("mockServeFileWrapper called with path:", path);
-        assertEquals(path, join(mockPublicDir, "nonexistent.html"));
-        return new Response("404 Not Found", { status: 404 });
-    };
-
-    const spyServeFileWrapper = spy(mockServeFileWrapper);
-
-    const handler = createHandler(spyServeFileWrapper, mockPublicDir);
+    const mockServeFileWrapper = createMockServeFileWrapper("404 Not Found", 404);
+    const { handler, spyServeFileWrapper } = createHandlerWithSpy(mockServeFileWrapper);
 
     const req = new Request("http://localhost:8000/nonexistent.html");
     const response = await handler(req);
 
     assertEquals(response.status, 404);
     assertEquals(await response.text(), "404 Not Found");
-
-    assertSpyCall(spyServeFileWrapper, 0, {
-        args: [join(mockPublicDir, "nonexistent.html"), req],
-    });
-    const returnedResponse = await spyServeFileWrapper.calls[0].returned;
-    assertExists(returnedResponse, "Returned response should not be undefined");
+    assertSpyCallWithPath(spyServeFileWrapper, "nonexistent.html", req);
 });
