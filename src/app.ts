@@ -32,9 +32,31 @@
 // }
 
 import { serveFile } from "https://deno.land/std@0.204.0/http/file_server.ts";
-import { join } from "https://deno.land/std@0.204.0/path/mod.ts";
+import { join, dirname, fromFileUrl } from "https://deno.land/std@0.204.0/path/mod.ts";
 
-const publicDir = join(Deno.cwd(), "../public");
+function findPublicDir(): string {
+    const possibleDirs = [
+        join(Deno.cwd(), "public"),
+        join(dirname(fromFileUrl(import.meta.url)), "..", "public"),
+        "/app/public",
+    ];
+
+    for (const dir of possibleDirs) {
+        try {
+            const dirInfo = Deno.statSync(dir);
+            if (dirInfo.isDirectory) {
+                console.log("Found public directory at:", dir);
+                return dir;
+            }
+        } catch {
+            // Directory doesn't exist or is not accessible, continue to next
+        }
+    }
+
+    throw new Error("Could not find public directory");
+}
+
+const publicDir = findPublicDir();
 console.log("Public directory:", publicDir);
 
 async function handler(req: Request): Promise<Response> {
