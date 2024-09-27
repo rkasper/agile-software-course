@@ -6,6 +6,7 @@ import { createHandler, ServeFileWrapper } from "../src/app.ts";
 const MOCK_PUBLIC_DIR = "/mock/app/public";
 
 function createMockServeFileWrapper(responseBody: string, status = 200, headers = {}): ServeFileWrapper {
+    // deno-lint-ignore no-unused-vars
     return async (path: string, req: Request): Promise<Response> => {
         console.log("mockServeFileWrapper called with path:", path);
         return new Response(responseBody, { status, headers });
