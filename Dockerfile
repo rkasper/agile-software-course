@@ -17,9 +17,5 @@ CMD ["run", "--allow-net", "--allow-read", "src/app.ts"]
 # Expose the port the app runs on
 EXPOSE 8000
 
-# Add a new stage for running tests
-FROM denoland/deno:1.46.3 AS test
-WORKDIR /app
-COPY . .
-RUN deno cache tests/app_test.ts
-CMD ["test", "--allow-net", "--allow-read"]
+# Add a label for the test command
+LABEL com.digitalocean.test-cmd='["deno", "test"]'
