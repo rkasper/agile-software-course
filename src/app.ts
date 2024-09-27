@@ -1,38 +1,8 @@
-// import { serveFile } from "https://deno.land/std@0.204.0/http/file_server.ts";
-//
-// // Slightly complicated so we can mock createHandler() in unit tests
-//
-// export type ServeFileWrapper = (path: string, req: Request) => Promise<Response>;
-//
-// export const defaultServeFileWrapper: ServeFileWrapper = async (path: string, req: Request): Promise<Response> => {
-//     try {
-//         return await serveFile(req, path);
-//     } catch {
-//         return new Response("404 Not Found", { status: 404 });
-//     }
-// };
-//
-// export function createHandler(serveFileWrapperFn: ServeFileWrapper = defaultServeFileWrapper) {
-//     return async function handler(req: Request): Promise<Response> {
-//         const url = new URL(req.url);
-//         let filepath = decodeURIComponent(url.pathname);
-//
-//         if (filepath === "" || filepath === "/") {
-//             filepath = "/index.html";
-//         }
-//
-//         return await serveFileWrapperFn(`../public${filepath}`, req);
-//     };
-// }
-//
-// // Only start the server if this file is run directly
-// if (import.meta.main) {
-//     const handler = createHandler();
-//     Deno.serve({ port: 8000 }, handler);
-// }
+import {serveFile} from "https://deno.land/std@0.204.0/http/file_server.ts";
+import {dirname, fromFileUrl, join} from "https://deno.land/std@0.204.0/path/mod.ts";
 
-import { serveFile } from "https://deno.land/std@0.204.0/http/file_server.ts";
-import { join, dirname, fromFileUrl } from "https://deno.land/std@0.204.0/path/mod.ts";
+// This is slightly complicated so we can mock createHandler() in unit tests.
+// Was it worth the extra complexity? I'm still not sure.
 
 function findPublicDir(): string {
     const possibleDirs = [
@@ -59,32 +29,47 @@ function findPublicDir(): string {
 const publicDir = findPublicDir();
 console.log("Public directory:", publicDir);
 
-async function handler(req: Request): Promise<Response> {
-    console.log('handler: req.url == ', req.url);
-    const url = new URL(req.url);
-    let filepath = decodeURIComponent(url.pathname);
+export type ServeFileWrapper = (path: string, req: Request) => Promise<Response>;
 
-    // If filepath is empty or /, serve index.html
-    if (filepath === "" || filepath === "/") {
-        filepath = "/index.html";
-    }
-
-    // For testing on DO App Platform
-    if (filepath === "/do-test") {
-        return new Response("This filepath is totally working, my friend!");
-    }
-
+export const defaultServeFileWrapper: ServeFileWrapper = async (path: string, req: Request): Promise<Response> => {
     try {
-        const fullPath = join(publicDir, filepath);
-        console.log('handler: attempting to serve ', fullPath);
-        const fileInfo = await Deno.stat(fullPath);
-        console.log('File exists:', fileInfo.isFile);
-        return await serveFile(req, fullPath);
-    } catch (error) {
-        console.error('Error serving file:', error);
+        return await serveFile(req, path);
+    } catch {
         return new Response("404 Not Found", { status: 404 });
+    }
+};
+
+export function createHandler(
+    serveFileWrapperFn: ServeFileWrapper = defaultServeFileWrapper,
+    injectedPublicDir?: string
+) {
+    const publicDir = injectedPublicDir || findPublicDir();
+    console.log("Using public directory: ", publicDir);
+
+    return async function handler(req: Request): Promise<Response> {
+        const url = new URL(req.url);
+        let filepath = decodeURIComponent(url.pathname);
+
+        if (filepath === "" || filepath === "/") {
+            filepath = "/index.html";
+            console.log('handler: serving index.html');
+        }
+
+        if (filepath === "/do-test") {
+            return new Response("This filepath is totally working, my friend!");
+        }
+
+        try {
+            return await serveFileWrapperFn(join(publicDir, filepath), req);
+        } catch (error) {
+            console.error('Error serving file:', error);
+            return new Response("404 Not Found", { status: 404 });
+        }
     }
 }
 
-console.log("Starting server on port 8000");
-Deno.serve({ port: 8000 }, handler);
+// Only start the server if this file is run directly
+if (import.meta.main) {
+    const handler = createHandler();
+    Deno.serve({ port: 8000 }, handler);
+}
