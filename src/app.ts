@@ -15,10 +15,11 @@ log.setup({
 });
 
 const PROTECTED_PAGE = "/fall2024.html";
-const PASSWORD = Deno.env.get("PROTECTED_PAGE_PASSWORD");
-if (!PASSWORD) {
-    log.error("PROTECTED_PAGE_PASSWORD environment variable is not set!");
-    Deno.exit(1);
+const PASSWORD = Deno.env.get("PROTECTED_PAGE_PASSWORD") || "default_test_password";
+if (PASSWORD === "default_test_password") {
+    log.warning("Using default test password. Set PROTECTED_PAGE_PASSWORD for production.");
+} else {
+    log.info("Using password from PROTECTED_PAGE_PASSWORD environment variable.");
 }
 
 function generateLoginPage(error = "") {
