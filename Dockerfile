@@ -12,7 +12,7 @@ RUN deno cache src/app.ts
 RUN deno cache tests/app_test.ts
 
 # Run tests
-RUN deno test --allow-read
+RUN deno test --allow-read --allow-env
 
 # Set the default command to run the application
 CMD ["run", "--allow-net", "--allow-read", "--allow-env", "src/app.ts"]
