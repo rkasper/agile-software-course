@@ -15,7 +15,7 @@ RUN deno cache tests/app_test.ts
 RUN deno test --allow-read
 
 # Set the default command to run the application
-CMD ["run", "--allow-net", "--allow-read", "src/app.ts"]
+CMD ["run", "--allow-net", "--allow-read", "--allow-env", "src/app.ts"]
 
 # Expose the port the app runs on
 EXPOSE 8000

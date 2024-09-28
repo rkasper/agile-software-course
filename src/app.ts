@@ -14,6 +14,40 @@ log.setup({
   },
 });
 
+const PROTECTED_PAGE = "/fall2024.html";
+const PASSWORD = Deno.env.get("PROTECTED_PAGE_PASSWORD");
+if (!PASSWORD) {
+    log.error("PROTECTED_PAGE_PASSWORD environment variable is not set!");
+    Deno.exit(1);
+}
+
+function generateLoginPage(error = "") {
+    return `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Required</title>
+    <style>
+      body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+      form { background: #f0f0f0; padding: 20px; border-radius: 5px; }
+      input { margin: 10px 0; padding: 5px; }
+      .error { color: red; }
+    </style>
+  </head>
+  <body>
+    <form method="POST">
+      <h2>Password Required</h2>
+      ${error ? `<p class="error">${error}</p>` : ''}
+      <input type="password" name="password" required>
+      <input type="submit" value="Submit">
+    </form>
+  </body>
+  </html>
+  `;
+}
+
 function findPublicDir(): string {
     const possibleDirs = [
         join(Deno.cwd(), "public"),
@@ -72,6 +106,28 @@ export function createHandler(
         if (filepath === "/do-test") {
             log.debug('Serving test response');
             return new Response("This filepath is totally working, my friend!");
+        }
+
+        if (filepath === PROTECTED_PAGE) {
+            if (req.method === "POST") {
+                const formData = await req.formData();
+                const password = formData.get("password");
+                if (password === PASSWORD) {
+                    log.info(`Authorized access to ${PROTECTED_PAGE}`);
+                    return serveFileWrapperFn(join(publicDir, filepath), req);
+                } else {
+                    log.info(`Unauthorized access attempt to ${PROTECTED_PAGE}`);
+                    return new Response(generateLoginPage("Incorrect password. Please try again."), {
+                        status: 401,
+                        headers: { "Content-Type": "text/html" }
+                    });
+                }
+            } else {
+                return new Response(generateLoginPage(), {
+                    status: 200,
+                    headers: { "Content-Type": "text/html" }
+                });
+            }
         }
 
         try {
