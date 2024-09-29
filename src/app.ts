@@ -24,29 +24,60 @@ if (PASSWORD === "default_test_password") {
 
 function generateLoginPage(error = "") {
     return `
-  <!DOCTYPE html>
-  <html lang="en">
-  <head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Password Required</title>
+    <title>Password Required - Agile Software Development</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-      body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-      form { background: #f0f0f0; padding: 20px; border-radius: 5px; }
-      input { margin: 10px 0; padding: 5px; }
-      .error { color: red; }
+        .masthead {
+            height: 100vh;
+            min-height: 500px;
+            background-image: url('assets/img/harvard-campus-somesh-kesarla-suresh-hWqrI3CyPuM-unsplash.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
     </style>
-  </head>
-  <body>
-    <form method="POST">
-      <h2>Password Required</h2>
-      ${error ? `<p class="error">${error}</p>` : ''}
-      <input type="password" name="password" required>
-      <input type="submit" value="Submit">
-    </form>
-  </body>
-  </html>
-  `;
+</head>
+<body>
+    <header class="masthead">
+        <div class="container h-100">
+            <div class="row h-100 align-items-center justify-content-center">
+                <div class="col-12 col-md-8 col-lg-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h2 class="card-title text-center mb-4">Password Required</h2>
+                            ${error ? `<div class="alert alert-danger">${error}</div>` : ''}
+                            <form method="POST">
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Enter Password</label>
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">Submit</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <footer class="bg-light py-3 mt-auto">
+        <div class="container text-center">
+            <img src="assets/img/cc-by-sa-88x31.png" alt="CC-BY-SA">
+            <p class="mb-0">Agile Software Development by <a href="https://kasperowski.com/">Richard Kasperowski</a> is licensed under a <a href="https://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+    `;
 }
 
 function findPublicDir(): string {
