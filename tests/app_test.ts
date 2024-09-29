@@ -36,40 +36,42 @@ Deno.test("Unit test system works properly", () => {
     assertEquals(2 + 2, 4);
 });
 
-Deno.test("handler serves index.html for root path", async () => {
-    const mockServeFileWrapper = createMockServeFileWrapper("Index Page");
-    const { handler, spyServeFileWrapper } = createHandlerWithSpy(mockServeFileWrapper);
+Deno.test("Request handler",async (t) => {
+    await t.step("handler serves index.html for root path", async () => {
+        const mockServeFileWrapper = createMockServeFileWrapper("Index Page");
+        const {handler, spyServeFileWrapper} = createHandlerWithSpy(mockServeFileWrapper);
 
-    const req = new Request("http://localhost:8000/");
-    const response = await handler(req);
+        const req = new Request("http://localhost:8000/");
+        const response = await handler(req);
 
-    assertEquals(response.status, 200, "Expected 200 status code");
-    assertEquals(await response.text(), "Index Page");
-    assertSpyCallWithPath(spyServeFileWrapper, "index.html", req);
-});
+        assertEquals(response.status, 200, "Expected 200 status code");
+        assertEquals(await response.text(), "Index Page");
+        assertSpyCallWithPath(spyServeFileWrapper, "index.html", req);
+    });
 
-Deno.test("handler serves arbitrary file", async () => {
-    const cssContent = "body { font-family: Arial, sans-serif; }";
-    const mockServeFileWrapper = createMockServeFileWrapper(cssContent, 200, { "Content-Type": "text/css" });
-    const { handler, spyServeFileWrapper } = createHandlerWithSpy(mockServeFileWrapper);
+    await t.step("handler serves arbitrary file", async () => {
+        const cssContent = "body { font-family: Arial, sans-serif; }";
+        const mockServeFileWrapper = createMockServeFileWrapper(cssContent, 200, { "Content-Type": "text/css" });
+        const { handler, spyServeFileWrapper } = createHandlerWithSpy(mockServeFileWrapper);
 
-    const req = new Request("http://localhost:8000/styles/main.css");
-    const response = await handler(req);
+        const req = new Request("http://localhost:8000/styles/main.css");
+        const response = await handler(req);
 
-    assertEquals(response.status, 200);
-    assertEquals(response.headers.get("Content-Type"), "text/css");
-    assertEquals(await response.text(), cssContent);
-    assertSpyCallWithPath(spyServeFileWrapper, "styles/main.css", req);
-});
+        assertEquals(response.status, 200);
+        assertEquals(response.headers.get("Content-Type"), "text/css");
+        assertEquals(await response.text(), cssContent);
+        assertSpyCallWithPath(spyServeFileWrapper, "styles/main.css", req);
+    });
 
-Deno.test("handler returns 404 for non-existent file", async () => {
-    const mockServeFileWrapper = createMockServeFileWrapper("404 Not Found", 404);
-    const { handler, spyServeFileWrapper } = createHandlerWithSpy(mockServeFileWrapper);
+    await t.step("handler returns 404 for non-existent file", async () => {
+        const mockServeFileWrapper = createMockServeFileWrapper("404 Not Found", 404);
+        const { handler, spyServeFileWrapper } = createHandlerWithSpy(mockServeFileWrapper);
 
-    const req = new Request("http://localhost:8000/nonexistent.html");
-    const response = await handler(req);
+        const req = new Request("http://localhost:8000/nonexistent.html");
+        const response = await handler(req);
 
-    assertEquals(response.status, 404);
-    assertEquals(await response.text(), "404 Not Found");
-    assertSpyCallWithPath(spyServeFileWrapper, "nonexistent.html", req);
+        assertEquals(response.status, 404);
+        assertEquals(await response.text(), "404 Not Found");
+        assertSpyCallWithPath(spyServeFileWrapper, "nonexistent.html", req);
+    });
 });
