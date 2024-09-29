@@ -145,8 +145,6 @@ export function createHandler(
             if (req.method === "POST") {
                 const formData = await req.formData();
                 const password = formData.get("password");
-                console.log('**************** password submitted: ', password);
-                console.log('**************** password expected: ', PASSWORD);
                 if (password === PASSWORD) {
                     log.info(`Authorized access to ${PROTECTED_PAGE}`);
                     return serveFileWrapperFn(join(publicDir, filepath), req);
