@@ -1,13 +1,18 @@
-import { assert, assertEquals, assertExists } from "https://deno.land/std@0.204.0/testing/asserts.ts";
+import {
+    assert,
+    assertEquals,
+    assertExists,
+    assertStringIncludes
+} from "https://deno.land/std@0.204.0/testing/asserts.ts";
 import { assertSpyCall, Spy, spy } from "https://deno.land/std@0.204.0/testing/mock.ts";
 import { join } from "https://deno.land/std@0.204.0/path/mod.ts";
-import { createHandler, ServeFileWrapper } from "../src/app.ts";
+import { createHandler, PASSWORD, ServeFileWrapper } from "../src/app.ts";
 
 const MOCK_PUBLIC_DIR = "/mock/app/public";
 
 function createMockServeFileWrapper(responseBody: string, status = 200, headers = {}): ServeFileWrapper {
-    // deno-lint-ignore no-unused-vars
-    return async (path: string, req: Request): Promise<Response> => {
+    // deno-lint-ignore require-await
+    return async (path: string, _req: Request): Promise<Response> => {
         console.log("mockServeFileWrapper called with path:", path);
         return new Response(responseBody, { status, headers });
     };
@@ -73,5 +78,74 @@ Deno.test("Request handler",async (t) => {
         assertEquals(response.status, 404);
         assertEquals(await response.text(), "404 Not Found");
         assertSpyCallWithPath(spyServeFileWrapper, "nonexistent.html", req);
+    });
+
+    await t.step("handler serves login page for protected page without password", async () => {
+        const mockServeFileWrapper = createMockServeFileWrapper("Protected content");
+        const { handler, spyServeFileWrapper } = createHandlerWithSpy(mockServeFileWrapper);
+
+        const req = new Request("http://localhost:8000/fall2024.html");
+        const response = await handler(req);
+
+        assertEquals(response.status, 200, "Expected 200 status code");
+        const responseText = await response.text();
+        assertStringIncludes(responseText, "<title>Password Required - Agile Software Development</title>");
+        assertStringIncludes(responseText, "<h2 class=\"card-title text-center mb-4\">Password Required</h2>");
+        assertStringIncludes(responseText, "<form method=\"POST\">");
+
+        // Verify that the serveFileWrapper was not called
+        assertEquals(spyServeFileWrapper.calls.length, 0, "serveFileWrapper should not be called for unauthenticated access");
+    });
+
+    await t.step("handler returns error for protected page with incorrect password", async () => {
+        const mockServeFileWrapper = createMockServeFileWrapper("Protected content");
+        const { handler, spyServeFileWrapper } = createHandlerWithSpy(mockServeFileWrapper);
+
+        const formData = new FormData();
+        formData.append("password", "incorrectpassword");
+
+        const req = new Request("http://localhost:8000/fall2024.html", {
+            method: "POST",
+            body: formData
+        });
+
+        const response = await handler(req);
+
+        assertEquals(response.status, 401, "Expected 401 Unauthorized status code");
+        const responseText = await response.text();
+        assertStringIncludes(responseText, "<title>Password Required - Agile Software Development</title>");
+        assertStringIncludes(responseText, "<h2 class=\"card-title text-center mb-4\">Password Required</h2>");
+        assertStringIncludes(responseText, "<div class=\"alert alert-danger\">Incorrect password. Please try again.</div>");
+        assertStringIncludes(responseText, "<form method=\"POST\">");
+
+        // Verify that the serveFileWrapper was not called
+        assertEquals(spyServeFileWrapper.calls.length, 0, "serveFileWrapper should not be called for incorrect password");
+    });
+
+    await t.step("handler serves protected content with correct password", async () => {
+        const protectedContent = "This is the protected content of fall2024.html";
+
+       const mockServeFileWrapper = createMockServeFileWrapper(protectedContent);
+        const { handler, spyServeFileWrapper } = createHandlerWithSpy(mockServeFileWrapper);
+
+        const formData = new FormData();
+        formData.append("password", PASSWORD);
+
+        const req = new Request("http://localhost:8000/fall2024.html", {
+            method: "POST",
+            body: formData
+        });
+
+        const response = await handler(req);
+
+        assertEquals(response.status, 200, "Expected 200 OK status code");
+        const responseText = await response.text();
+        assertEquals(responseText, protectedContent, "Protected content should be served");
+
+        // Verify that the serveFileWrapper was called with the correct path
+        assertSpyCall(spyServeFileWrapper, 0, {
+            args: [join(MOCK_PUBLIC_DIR, "fall2024.html"), req],
+        });
+        assertEquals(spyServeFileWrapper.calls.length, 1, "serveFileWrapper should be called once for correct password");
     });
 });

@@ -15,7 +15,7 @@ log.setup({
 });
 
 const PROTECTED_PAGE = "/fall2024.html";
-const PASSWORD = Deno.env.get("PROTECTED_PAGE_PASSWORD") || "default_test_password";
+export const PASSWORD = Deno.env.get("PROTECTED_PAGE_PASSWORD") || "default_test_password";
 if (PASSWORD === "default_test_password") {
     log.warning("Using default test password. Set PROTECTED_PAGE_PASSWORD for production.");
 } else {
@@ -23,6 +23,7 @@ if (PASSWORD === "default_test_password") {
 }
 
 function generateLoginPage(error = "") {
+    // language=HTML
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -144,6 +145,8 @@ export function createHandler(
             if (req.method === "POST") {
                 const formData = await req.formData();
                 const password = formData.get("password");
+                console.log('**************** password submitted: ', password);
+                console.log('**************** password expected: ', PASSWORD);
                 if (password === PASSWORD) {
                     log.info(`Authorized access to ${PROTECTED_PAGE}`);
                     return serveFileWrapperFn(join(publicDir, filepath), req);
