@@ -4,8 +4,10 @@ FROM denoland/deno:1.46.3
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the entire project into the container
-COPY . .
+# Copy the necessary project into the container
+COPY src/ ./src/
+COPY tests/ ./tests/
+COPY public/ ./public/
 
 # Cache the dependencies
 RUN deno cache src/app.ts
